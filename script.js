@@ -1,300 +1,173 @@
-const body =
-  document.body;
-
-const themeToggle =
-  document.getElementById("themeToggle");
-
-const searchInput =
-  document.getElementById("ruleSearch");
-
-const clearSearch =
-  document.getElementById("clearSearch");
-
-const searchCount =
-  document.getElementById("searchCount");
-
-const noResults =
-  document.getElementById("noResults");
-
-const navLinks =
-  document.querySelectorAll(".nav-link");
-
-const sections =
-  document.querySelectorAll(".section");
-
-const ruleCards =
-  document.querySelectorAll(".rule-card");
-
-const ruleCategories =
-  document.querySelectorAll(".rule-category");
-
-const sidebar =
-  document.getElementById("sidebar");
-
-const menuButton =
-  document.getElementById("menuButton");
-
-const sidebarOverlay =
-  document.getElementById("sidebarOverlay");
-
+const body = document.body;
+const themeToggle = document.getElementById("themeToggle");
+const searchInput = document.getElementById("ruleSearch");
+const clearSearch = document.getElementById("clearSearch");
+const searchCount = document.getElementById("searchCount");
+const noResults = document.getElementById("noResults");
+const navLinks = document.querySelectorAll(".nav-link");
+const sections = document.querySelectorAll(".section");
+const ruleGroups = document.querySelectorAll(".rule-group");
+const ruleCategories = document.querySelectorAll(".rule-category");
+const subrules = document.querySelectorAll(".subrule");
+const sidebar = document.getElementById("sidebar");
+const menuButton = document.getElementById("menuButton");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
 
 /* THEME */
 
-const savedTheme =
-  localStorage.getItem("phatz-theme");
-
+const savedTheme = localStorage.getItem("phatz-theme");
 
 if (savedTheme === "light") {
-
   body.classList.add("light");
-
   themeToggle.checked = true;
-
 }
 
+themeToggle.addEventListener("change", () => {
+  body.classList.toggle("light", themeToggle.checked);
 
-themeToggle.addEventListener(
-  "change",
-  () => {
-
-    body.classList.toggle(
-      "light",
-      themeToggle.checked
-    );
-
-
-    localStorage.setItem(
-      "phatz-theme",
-      themeToggle.checked
-        ? "light"
-        : "dark"
-    );
-
-  }
-);
-
+  localStorage.setItem(
+    "phatz-theme",
+    themeToggle.checked ? "light" : "dark"
+  );
+});
 
 /* SEARCH */
 
 function runSearch() {
+  const query = searchInput.value.trim().toLowerCase();
 
-  const query =
-    searchInput.value
-      .trim()
-      .toLowerCase();
+  clearSearch.style.display = query ? "block" : "none";
 
+  let visibleGroups = 0;
+  let visibleSubrules = 0;
 
-  clearSearch.style.display =
-    query
-      ? "block"
-      : "none";
+  ruleGroups.forEach(group => {
+    const groupText = (
+      group.innerText +
+      " " +
+      (group.dataset.search || "")
+    ).toLowerCase();
 
+    let groupHasMatch = false;
 
-  let visibleCount = 0;
+    const details = group.querySelectorAll(".subrule");
 
-
-  ruleCards.forEach(
-    card => {
-
-      const text =
-        (
-          card.innerText +
-          " " +
-          (
-            card.dataset.search ||
-            ""
-          )
-        )
-        .toLowerCase();
-
+    details.forEach(detail => {
+      const detailText = detail.innerText.toLowerCase();
 
       const match =
         !query ||
-        text.includes(query);
+        detailText.includes(query) ||
+        groupText.includes(query);
 
-
-      card.classList.toggle(
-        "hidden",
-        !match
-      );
-
+      detail.style.display = match ? "" : "none";
 
       if (match) {
-        visibleCount++;
+        groupHasMatch = true;
+
+        if (query) {
+          detail.open = true;
+        }
+
+        visibleSubrules++;
+      } else {
+        detail.open = false;
       }
+    });
 
+    group.classList.toggle(
+      "hidden",
+      query && !groupHasMatch
+    );
+
+    if (groupHasMatch || !query) {
+      visibleGroups++;
     }
-  );
+  });
 
+  ruleCategories.forEach(category => {
+    const visible = category.querySelectorAll(
+      ".rule-group:not(.hidden)"
+    );
 
-  ruleCategories.forEach(
-    category => {
-
-      const visibleCards =
-        category.querySelectorAll(
-          ".rule-card:not(.hidden)"
-        );
-
-
-      category.classList.toggle(
-        "hidden",
-        query &&
-        visibleCards.length === 0
-      );
-
-    }
-  );
-
+    category.classList.toggle(
+      "hidden",
+      query && visible.length === 0
+    );
+  });
 
   if (query) {
-
     searchCount.textContent =
-      visibleCount === 1
-        ? "1 matching rule"
-        : `${visibleCount} matching rules`;
+      `${visibleSubrules} matching section${visibleSubrules === 1 ? "" : "s"}`;
+  } else {
+    searchCount.textContent = "";
 
+    subrules.forEach(detail => {
+      detail.style.display = "";
+      detail.open = false;
+    });
   }
-
-  else {
-
-    searchCount.textContent =
-      "";
-
-  }
-
 
   noResults.classList.toggle(
     "show",
-    query &&
-    visibleCount === 0
+    query && visibleGroups === 0
   );
-
 }
 
+searchInput.addEventListener("input", runSearch);
 
-searchInput.addEventListener(
-  "input",
-  runSearch
-);
-
-
-clearSearch.addEventListener(
-  "click",
-  () => {
-
-    searchInput.value =
-      "";
-
-    runSearch();
-
-    searchInput.focus();
-
-  }
-);
-
+clearSearch.addEventListener("click", () => {
+  searchInput.value = "";
+  runSearch();
+  searchInput.focus();
+});
 
 /* ACTIVE SIDEBAR SECTION */
 
-const observer =
-  new IntersectionObserver(
+const observer = new IntersectionObserver(
+  entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
 
-    entries => {
-
-      entries.forEach(
-        entry => {
-
-          if (
-            entry.isIntersecting
-          ) {
-
-            const id =
-              entry.target.id;
-
-
-            navLinks.forEach(
-              link => {
-
-                link.classList.toggle(
-                  "active",
-                  link.getAttribute(
-                    "href"
-                  ) ===
-                  `#${id}`
-                );
-
-              }
-            );
-
-          }
-
-        }
-      );
-
-    },
-
-    {
-      rootMargin:
-        "-25% 0px -65% 0px"
-    }
-
-  );
-
-
-sections.forEach(
-  section => {
-
-    observer.observe(
-      section
-    );
-
+        navLinks.forEach(link => {
+          link.classList.toggle(
+            "active",
+            link.getAttribute("href") === `#${id}`
+          );
+        });
+      }
+    });
+  },
+  {
+    rootMargin: "-25% 0px -65% 0px"
   }
 );
 
+sections.forEach(section => {
+  observer.observe(section);
+});
 
 /* MOBILE SIDEBAR */
 
-menuButton.addEventListener(
-  "click",
-  () => {
-
-    sidebar.classList.add(
-      "open"
-    );
-
-    sidebarOverlay.classList.add(
-      "show"
-    );
-
-  }
-);
-
+menuButton.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  sidebarOverlay.classList.add("show");
+});
 
 sidebarOverlay.addEventListener(
   "click",
   closeSidebar
 );
 
-
-navLinks.forEach(
-  link => {
-
-    link.addEventListener(
-      "click",
-      closeSidebar
-    );
-
-  }
-);
-
+navLinks.forEach(link => {
+  link.addEventListener(
+    "click",
+    closeSidebar
+  );
+});
 
 function closeSidebar() {
-
-  sidebar.classList.remove(
-    "open"
-  );
-
-  sidebarOverlay.classList.remove(
-    "show"
-  );
-
+  sidebar.classList.remove("open");
+  sidebarOverlay.classList.remove("show");
 }
